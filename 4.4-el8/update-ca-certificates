@@ -1,0 +1,19 @@
+#!/bin/sh
+# Debian-compatible shim for the EL8 image.
+#
+# The fleet's compose files run
+#   cp /data/ssl/R3.crt /usr/local/share/ca-certificates/ && update-ca-certificates
+# before mongod. EL8 has neither that directory nor that command; its trust store is fed
+# from /etc/pki/ca-trust/source/anchors/ via update-ca-trust. This shim maps one onto the
+# other, so the compose files stay identical for the focal and the el8 image and a
+# rollback is a plain image-tag swap.
+set -e
+
+n=0
+for f in /usr/local/share/ca-certificates/*.crt; do
+	[ -f "$f" ] || continue
+	cp "$f" /etc/pki/ca-trust/source/anchors/
+	n=$((n + 1))
+done
+update-ca-trust extract
+echo "update-ca-certificates (el8 shim): $n certificate(s) from /usr/local/share/ca-certificates added to the system trust store"
